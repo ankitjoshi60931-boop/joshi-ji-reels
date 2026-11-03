@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Joshi Ji Reels - Real Login</title>
+<style>
+body{background:#000;color:#fff;font-family:sans-serif;display:flex;justify-content:center;align-items:center;min-height:100vh;margin:0}
+.box{background:#111;border:1px solid #333;padding:25px;border-radius:15px;width:90%;max-width:360px;text-align:center}
+input,button{width:100%;padding:13px;margin:8px 0;border-radius:10px;border:1px solid #333;box-sizing:border-box;font-size:16px}
+input{background:#000;color:#fff}
+button{background:#ff0050;color:#fff;border:0;font-weight:bold}
+h2{color:#ff0050;margin:0}
+</style>
+</head>
+<body>
+<div class="box">
+<h2>👑 Joshi Ji Reels</h2>
+<p>Real OTP - 1 Number = 1 Account</p>
+<input id="phone" placeholder="+91 9876543210" value="+91 ">
+<div id="recaptcha"></div>
+<button id="send">Send OTP</button>
+<input id="code" placeholder="OTP 6 digit" style="display:none">
+<button id="verify" style="display:none">Verify & Login</button>
+<p id="msg" style="color:#aaa;font-size:13px"></p>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getAuth, RecaptchaVerifier, signInWithPhoneNumber } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { getFirestore, doc, getDoc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyBx-Your-Api-Key-Here",
+  authDomain: "joshi-ji-reels.firebaseapp.com",
+  projectId: "joshi-ji-reels",
+  appId: "1:123456:web:abc"
+};
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+let confirmResult;
+
+window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha', {size:'normal'});
+
+document.getElementById('send').onclick = async ()=>{
+  const p=document.getElementById('phone').value;
+  const m=document.getElementById('msg');
+  m.textContent='OTP भेज रहे हैं...';
+  try{
+    confirmResult = await signInWithPhoneNumber(auth, p, window.recaptchaVerifier);
+    m.textContent='OTP गया! SMS देखो';
+    document.getElementById('code').style.display='block';
+    document.getElementById('verify').style.display='block';
+    document.getElementById('send').style.display='none';
+  }catch(e){ m.textContent=e.message; }
+};
+
+document.getElementById('verify').onclick = async ()=>{
+  const c=document.getElementById('code').value;
+  const m=document.getElementById('msg');
+  try{
+    const res = await confirmResult.confirm(c);
+    const uid=res.user.uid;
+    const ref=doc(db,"users",uid);
+    const snap=await getDoc(ref);
+    if(!snap.exists()){
+      await setDoc(ref,{phone:res.user.phoneNumber,createdAt:serverTimestamp()});
+      m.textContent='✅ नया Account बना! Duplicate बंद!';
+    }else{
+      m.textContent='✅ Login हो गया! Duplicate Blocked!';
+    }
+  }catch(e){ m.textContent='गलत OTP: '+e.message; }
+};
+</script>
+</body>
+</html>
